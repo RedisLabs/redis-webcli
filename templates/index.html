@@ -1,0 +1,42 @@
+{% extends "bootstrap/base.html" %}
+{% block title %}Redis Web-Based Interface{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type=text/javascript src="{{ url_for('static', filename='js/redis.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="jumbotron">
+    <h1>Redis CLI</h1>
+  </div>
+  <div class="panel panel-primary">
+      <div class="panel-heading">Redis Configuration</div>
+      <div class="panel-body">
+         {% for key, value in config.items() %}
+           {% if key.startswith('REDIS') %}
+          <div class="row">
+              <div class="col-xs-3">{{ key }}</div>
+            <div class="col-xs-6">{{ value }}</div>
+          </div>
+           {% endif %}
+           {% endfor %}
+      </div>
+  </div>
+  <div class="panel panel-primary">
+      <div class="panel-heading">Redis Access</div>
+      <div class="panel-body">
+          <div class="form-group">
+            <label for="response">Response:</label>
+            <textarea rows="10" class="form-control" id="response" disabled></textarea>
+          </div>
+          <div class="form-group">
+            <label for="command">Command:</label>
+            <input type="text" class="form-control" id="command">
+          </div>
+          <button class="btn btn-primary" id="execute">Execute</button>
+      </div>
+  </div>
+</div>
+{% endblock %}
