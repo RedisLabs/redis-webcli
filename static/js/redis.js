@@ -1,6 +1,5 @@
-function add_response(resp) {
-    var current = $('#response').val();
-    $('#response').val(current + resp + "\n");
+function set_response(resp) {
+    $('#response').text(resp + "\n");
 }
 
 $("#execute").click(function() {
@@ -13,10 +12,10 @@ $("#execute").click(function() {
         data: JSON.stringify({command: $("#command").val()}),
         error: function(xhr, status, msg) {
             $("#execute").button("reset");
-            add_response("ERROR: " + msg);
+            set_response("ERROR: " + msg);
         },
         success: function(resp) {
-            add_response(resp.response);
+            set_response(resp.response);
             $("#execute").button("reset");
         }
     })
