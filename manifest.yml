@@ -9,3 +9,4 @@ applications:
   env:
     FLASK_APP: app.py
     APP_SETTINGS: settings.cfg
+    NO_URL_QUOTING: True
