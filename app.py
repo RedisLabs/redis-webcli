@@ -13,7 +13,6 @@ redis_sentinel = SentinelExtension()
 redis_db = redis_sentinel.default_connection
 
 app = Flask(__name__)
-redis_password = None
 
 # Handle Cloud Foundry with Sentinel
 if 'VCAP_SERVICES' in os.environ:
@@ -21,8 +20,10 @@ if 'VCAP_SERVICES' in os.environ:
   service = services.get('redislabs')[0]
   creds = service['credentials']
   redis_password = creds['password']
+  if not os.getenv('NO_URL_QUOTING'):
+      redis_password = urllib.quote(redis_password, safe='')
   app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
-    urllib.quote(creds['password'], safe=''),
+    redis_password,
     creds['sentinel_addrs'][0],
     creds['sentinel_port'],
     urllib.quote(creds['name'], safe=''))
