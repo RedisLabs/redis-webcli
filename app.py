@@ -28,12 +28,11 @@ app = Flask(__name__)
 # Let Redis decode responses from bytes to strings
 app.config['REDIS_DECODE_RESPONSES'] = True
 
-
 def _get_service(services):
-    for name, service in services.items():
-        if name.startswith('redislabs'):
-            return service[0]
-
+    for service_name, instances in services.items():
+        for instance in instances:
+            if 'redis' in instance.get('tags', []):
+                return instance
 
 def configure():
     redis_password = None
