@@ -14,11 +14,21 @@ redis_db = redis_sentinel.default_connection
 
 app = Flask(__name__)
 
+def find_redis_instance(services):
+  for service_name, instances in services.items():
+      for instance in instances:
+          if 'redis' in instance.get('tags', []):
+              return instance
+  return None
+
 # Handle Cloud Foundry with Sentinel
 if 'VCAP_SERVICES' in os.environ:
   services = json.loads(os.getenv('VCAP_SERVICES'))
-  service = services.get('redislabs')[0]
-  creds = service['credentials']
+  instance = find_redis_instance(services)
+  if not instance:
+      raise RuntimeError('No redis service found')
+
+  creds = instance['credentials']
   redis_password = creds['password']
   if not os.getenv('NO_URL_QUOTING'):
       redis_password = urllib.quote(redis_password, safe='')
