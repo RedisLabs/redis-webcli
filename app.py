@@ -1,7 +1,6 @@
 import os
 import json
-from urlparse import urlparse
-import urllib
+from urllib.parse import urlparse,quote
 from collections import OrderedDict
 from flask import Flask, render_template, request, jsonify
 from flask_redis import FlaskRedis
@@ -14,6 +13,9 @@ redis_db = redis_sentinel.default_connection
 
 app = Flask(__name__)
 
+# Let Redis decode responses from bytes to strings
+app.config['REDIS_DECODE_RESPONSES'] = True
+
 # Handle Cloud Foundry with Sentinel
 if 'VCAP_SERVICES' in os.environ:
   services = json.loads(os.getenv('VCAP_SERVICES'))
@@ -21,12 +23,19 @@ if 'VCAP_SERVICES' in os.environ:
   creds = service['credentials']
   redis_password = creds['password']
   if not os.getenv('NO_URL_QUOTING'):
-      redis_password = urllib.quote(redis_password, safe='')
+      redis_password = quote(redis_password, safe='')
   app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
     redis_password,
     creds['sentinel_addrs'][0],
     creds['sentinel_port'],
-    urllib.quote(creds['name'], safe=''))
+    quote(creds['name'], safe=''))
+
+if 'REDIS_SENTINEL_HOST' in os.environ:
+  app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
+    os.getenv('REDIS_PASSWORD'),
+    os.getenv('REDIS_SENTINEL_HOST'),
+    os.getenv('REDIS_SENTINEL_PORT'),
+    quote(os.getenv('REDIS_DBNAME'), safe=''))
 
 redis_sentinel.init_app(app)
 Bootstrap(app)
@@ -37,7 +46,7 @@ def execute():
     try:
         response = redis_db.execute_command(*req['command'].split())
     except Exception as err:
-        response = 'Exception: %s' % err
+        response = 'Exception: %s' % str(err)
     return jsonify({
         'response': response
     })
@@ -53,7 +62,7 @@ def get_conn_info(url):
         ]
     elif url.startswith('redis+sentinel://'):
         result = redis_sentinel_url.parse_sentinel_url(url)
-        print result.hosts
+        print(result.hosts)
         conn_info = [
             ('Sentinel Hosts', ','.join(['%s:%s' % (pair[0], pair[1])
                                          for pair in result.hosts])),

@@ -1,0 +1,43 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: redis-webcli
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: redis-webcli
+      app: redis-webcli
+  template:
+    metadata:
+      labels:
+        name: redis-webcli
+        app: redis-webcli
+    spec:
+      containers:
+        - name: redis-webcli
+          image: dannimoiseyev/redis-webcli:0.1
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_SENTINEL_HOST
+              value: redis-enterprise
+            - name: REDIS_SENTINEL_PORT
+              value: "8001"
+            - name: REDIS_PASSWORD
+              value: ""
+            - name: REDIS_DBNAME
+              value: demo
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis-webcli
+spec:
+  type: LoadBalancer
+  selector:
+      name: redis-webcli
+      app: redis-webcli
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
