@@ -1,6 +1,12 @@
 import os
 import json
-from urllib.parse import urlparse,quote
+try:
+    # Python 2.x
+    from urlparse import urlparse
+    from urllib import quote
+except ImportError:
+    # Python 3.x
+    from urllib.parse import urlparse, quote
 from collections import OrderedDict
 from flask import Flask, render_template, request, jsonify
 from flask_redis import FlaskRedis
