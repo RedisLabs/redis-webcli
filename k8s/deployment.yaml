@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: redis-webcli
-          image: dannimoiseyev/redis-webcli:0.1
+          image: redislabs/redis-webcli:latest
           imagePullPolicy: Always
           env:
             - name: REDIS_SENTINEL_HOST
