@@ -31,18 +31,25 @@ if 'VCAP_SERVICES' in os.environ:
     if not os.getenv('NO_URL_QUOTING'):
         redis_password = quote(redis_password, safe='')
 
+    if 'sentinel_addrs' in creds:
+        sentinel_addr = creds['sentinel_addrs'][0]
+        sentinel_port = creds['sentinel_port']
+    else:
+        sentinel_addr = os.getenv('REDIS_SENTINEL_HOST')  # example: 1.1.1.1,2.2.2.2
+        sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
+
     app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
         redis_password,
-        creds['sentinel_addrs'][0],
-        creds['sentinel_port'],
+        sentinel_addr,
+        sentinel_port,
         quote(creds['name'], safe=''))
-
-if 'REDIS_SENTINEL_HOST' in os.environ:
+elif 'REDIS_SENTINEL_HOST' in os.environ:
     app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
         os.getenv('REDIS_PASSWORD'),
         os.getenv('REDIS_SENTINEL_HOST'),
         os.getenv('REDIS_SENTINEL_PORT'),
         quote(os.getenv('REDIS_DBNAME'), safe=''))
+
 
 redis_sentinel.init_app(app)
 Bootstrap(app)
