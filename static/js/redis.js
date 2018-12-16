@@ -20,3 +20,24 @@ $("#execute").click(function() {
         }
     })
 })
+
+function set_masters_response(resp) {
+    $('#masters_response').text(resp + "\n");
+}
+
+$("#masters").click(function() {
+    $(this).button("loading");
+    $.ajax({
+        type: "get",
+        url: "/masters",
+        error: function(xhr, status, msg) {
+            $("#masters").button("reset");
+            set_masters_response("ERROR: " + msg);
+        },
+        success: function(resp) {
+            let value = "Host: " + resp.response[0] + " Port: " + resp.response[1]
+            set_masters_response(value);
+            $("#masters").button("reset");
+        }
+    })
+})
