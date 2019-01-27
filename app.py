@@ -23,35 +23,46 @@ app = Flask(__name__)
 # Let Redis decode responses from bytes to strings
 app.config['REDIS_DECODE_RESPONSES'] = True
 
-# Handle Cloud Foundry with Sentinel
-if 'VCAP_SERVICES' in os.environ:
-    services = json.loads(os.getenv('VCAP_SERVICES'))
-    service = services.get('redislabs')[0]
-    creds = service['credentials']
-    redis_password = creds['password']
+
+def configure():
+    redis_password = None
+    redis_dbname = None
+    sentinel_addr = None
+    sentinel_port = None
+    # Handle Cloud Foundry with Sentinel
+    if 'VCAP_SERVICES' in os.environ:
+        services = json.loads(os.getenv('VCAP_SERVICES'))
+        service = services.get('redislabs')[0]
+        creds = service['credentials']
+        redis_password = creds['password']
+        redis_dbname = quote(creds['name'], safe='')
+
+        if 'sentinel_addrs' in creds:
+            sentinel_addr = creds['sentinel_addrs']
+            sentinel_port = creds['sentinel_port']
+        else:
+            sentinel_addr = os.getenv('REDIS_SENTINEL_HOST').split(",")  # example: 1.1.1.1,2.2.2.2
+            sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
+
+    elif 'REDIS_SENTINEL_HOST' in os.environ:
+        redis_password = os.getenv('REDIS_PASSWORD')
+        redis_dbname = os.getenv('REDIS_DBNAME')
+        sentinel_addr = os.getenv('REDIS_SENTINEL_HOST').split(",")
+        sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
+    else:
+        app.logger.warn("Couldn't configure redis")
+        return
+
     if not os.getenv('NO_URL_QUOTING'):
         redis_password = quote(redis_password, safe='')
-
-    if 'sentinel_addrs' in creds:
-        sentinel_addr = creds['sentinel_addrs'][0]
-        sentinel_port = creds['sentinel_port']
-    else:
-        sentinel_addr = os.getenv('REDIS_SENTINEL_HOST')  # example: 1.1.1.1,2.2.2.2
-        sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
-
-    app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
+    sentinel_host = ",".join("%s:%s" % (addr, sentinel_port) for addr in sentinel_addr)
+    app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s/%s/0' % (
         redis_password,
-        sentinel_addr,
-        sentinel_port,
-        quote(creds['name'], safe=''))
-elif 'REDIS_SENTINEL_HOST' in os.environ:
-    app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
-        os.getenv('REDIS_PASSWORD'),
-        os.getenv('REDIS_SENTINEL_HOST'),
-        os.getenv('REDIS_SENTINEL_PORT'),
-        quote(os.getenv('REDIS_DBNAME'), safe=''))
+        sentinel_host,
+        redis_dbname)
 
 
+configure()
 redis_sentinel.init_app(app)
 Bootstrap(app)
 
