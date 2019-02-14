@@ -6,6 +6,11 @@
 <script type=text/javascript src="{{ url_for('static', filename='js/redis.js') }}"></script>
 {% endblock %}
 
+{% block styles %}
+{{super()}}
+<link rel="stylesheet" href="{{url_for('static', filename='css/mystyle.css')}}">
+{% endblock %}
+
 {% block content %}
 <div class="container">
   <div class="content">
@@ -46,6 +51,23 @@
               <p>
               <div class="content">
                   <pre id="masters_response"></pre>
+              </div>
+          </div>
+      </div>
+    <div class="panel panel-primary">
+          <div class="panel-heading">Memtier Benchmark</div>
+          <div class="panel-body">
+              <div class="btn-group" role="group" aria-label="memtier">
+                <span class="input-group-btn">
+                    <button class="btn btn-secondary" id="memtier_start">Start</button>
+                    <button class="btn btn-secondary" id="memtier_poll">Poll</button>
+                    <button class="btn btn-secondary" id="memtier_stop">Stop</button>
+                </span>
+                <input type="text" value="-d 100 -n 20000000 --clients=10 --pipeline=4 --ratio=1:1" class="form-control" id="arguments">
+              </div>
+              <p>
+              <div class="content-flow">
+                  <pre id="memtier_response"></pre>
               </div>
           </div>
       </div>
