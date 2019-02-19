@@ -17,6 +17,7 @@ from flask_redis import FlaskRedis
 from flask_redis_sentinel import SentinelExtension
 from flask_bootstrap import Bootstrap
 import redis_sentinel_url
+import redis
 
 redis_sentinel = SentinelExtension()
 redis_db = redis_sentinel.default_connection
@@ -124,6 +125,12 @@ def execute():
     try:
         response = redis_db.execute_command(*req['command'].split())
         success = True
+    except redis.exceptions.ConnectionError:
+        try:
+            response = redis_db.execute_command(*req['command'].split())
+            success = True
+        except Exception as err:
+            response = 'Exception: %s' % str(err)
     except Exception as err:
         response = 'Exception: %s' % str(err)
     return jsonify({
