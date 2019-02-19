@@ -29,6 +29,12 @@ app = Flask(__name__)
 app.config['REDIS_DECODE_RESPONSES'] = True
 
 
+def _get_service(services):
+    for name, service in services.items():
+        if name.startswith('redislabs'):
+            return service[0]
+
+
 def configure():
     redis_password = None
     redis_dbname = None
@@ -37,7 +43,7 @@ def configure():
     # Handle Cloud Foundry with Sentinel
     if 'VCAP_SERVICES' in os.environ:
         services = json.loads(os.getenv('VCAP_SERVICES'))
-        service = services.get('redislabs')[0]
+        service = _get_service(services)
         creds = service['credentials']
         redis_password = creds['password']
         redis_dbname = quote(creds['name'], safe='')
