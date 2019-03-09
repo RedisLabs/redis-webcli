@@ -49,8 +49,9 @@ if 'VCAP_SERVICES' in os.environ:
         sentinel_port,
         quote(creds['name'], safe=''))
 elif 'REDIS_SENTINEL_HOST' in os.environ:
+    redis_password = os.getenv('REDIS_PASSWORD')
     app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s:%s/%s/0' % (
-        os.getenv('REDIS_PASSWORD'),
+        redis_password,
         os.getenv('REDIS_SENTINEL_HOST'),
         os.getenv('REDIS_SENTINEL_PORT'),
         quote(os.getenv('REDIS_DBNAME'), safe=''))
