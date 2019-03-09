@@ -70,6 +70,7 @@ def configure():
         redis_password,
         sentinel_host,
         redis_dbname)
+    app.config['REDIS_PASSWORD'] = redis_password
 
 
 configure()
@@ -179,7 +180,7 @@ def start_memtier_benchmark():
     master_info = get_master(app.config['REDIS_URL'])
     master_ip = str(master_info[0])
     master_port = str(master_info[1])
-    thread = MemtierThread(master_ip, master_port, redis_password, config)
+    thread = MemtierThread(master_ip, master_port, app.config['REDIS_PASSWORD'], config)
     thread.start()
     capp.memtier_process = thread
     time.sleep(10)
