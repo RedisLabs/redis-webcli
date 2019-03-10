@@ -80,12 +80,7 @@ Bootstrap(app)
 
 class MemtierThread(threading.Thread):
     def __init__(self, master_ip, master_port, redis_password=None, argument_line="", **kwargs):
-        try:
-            # Python 3.x
-            super().__init__(**kwargs)
-        except TypeError:
-            # Python 2.x
-            super(MemtierThread, self).__init__(**kwargs)
+        super(MemtierThread, self).__init__(**kwargs)
         self._master_ip = master_ip
         self._master_port = master_port
         self._redis_password = redis_password
