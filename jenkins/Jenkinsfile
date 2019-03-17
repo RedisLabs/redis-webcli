@@ -1,0 +1,10 @@
+node('slaves') {
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+        stage("Publish image") {
+            sh """
+            docker login --password=${PASSWORD} --username=${USERNAME} docker.io
+            make docker_push
+            """
+        }
+    }
+}
