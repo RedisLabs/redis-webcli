@@ -1,4 +1,8 @@
 node('slaves') {
+    stage("Checkout current code") {
+        checkout scm
+    }
+
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
         stage("Publish image") {
             sh """
