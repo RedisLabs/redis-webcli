@@ -8,4 +8,6 @@ WORKDIR /app
 
 RUN pip install -r requirements.txt
 
+RUN make memtier_benchmark
+
 CMD python -m flask run -p 8080 -h 0.0.0.0
