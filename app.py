@@ -71,7 +71,16 @@ def configure():
         sentinel_host,
         redis_dbname)
     app.config['REDIS_PASSWORD'] = redis_password
+    app.config['REDIS_DBNAME'] = redis_dbname
 
+    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED', False)
+    app.config['INSECURE_SSL'] = get_boolean_val_from_env('REDIS_WEBCLI_INSECURE_SSL', False)
+
+def get_boolean_val_from_env(env_entry_name, default_value):
+    val = os.getenv(env_entry_name)
+    if not val or val.lower() != "true":
+        return default_value
+    return True
 
 configure()
 redis_sentinel.init_app(app)
@@ -129,11 +138,13 @@ def execute():
     success = False
     req = request.get_json()
     try:
-        response = redis_db.execute_command(*req['command'].split())
+        conn = get_conn_through_sentinel()
+        response = str(conn.execute_command(*req['command'].split()))
         success = True
     except redis.exceptions.ConnectionError:
         try:
-            response = redis_db.execute_command(*req['command'].split())
+            conn = get_conn_through_sentinel()
+            response = str(conn.execute_command(*req['command'].split()))
             success = True
         except Exception as err:
             response = 'Exception: %s' % str(err)
@@ -144,6 +155,22 @@ def execute():
         'success': success
     })
 
+def get_conn_through_sentinel():
+    master_info = get_master(app.config['REDIS_URL'])
+    master_ip = str(master_info[0])
+    master_port = str(master_info[1])
+
+    conn = None
+    if app.config['SSL_ENABLED']:
+        ssl_cert_reqs = None if app.config['INSECURE_SSL'] else 'required'
+        conn = redis.Redis(host=master_ip, ssl=True,
+                           ssl_cert_reqs=ssl_cert_reqs,
+                           port=master_port,
+                           password=app.config['REDIS_PASSWORD'])
+    else:
+        conn = redis.Redis(host=master_ip, port=master_port, password=app.config['REDIS_PASSWORD'])
+
+    return conn
 
 def get_master(url):
     if not url.startswith('redis+sentinel://'):
