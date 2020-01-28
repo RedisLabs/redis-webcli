@@ -20,7 +20,6 @@ import redis_sentinel_url
 import redis
 
 redis_sentinel = SentinelExtension()
-redis_db = redis_sentinel.default_connection
 sentinel = redis_sentinel.sentinel
 
 app = Flask(__name__)
@@ -71,16 +70,27 @@ def configure():
         sentinel_host,
         redis_dbname)
     app.config['REDIS_PASSWORD'] = redis_password
-    app.config['REDIS_DBNAME'] = redis_dbname
 
-    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED', False)
-    app.config['INSECURE_SSL'] = get_boolean_val_from_env('REDIS_WEBCLI_INSECURE_SSL', False)
+    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED',
+                                                         False)
+    app.config['SKIP_HOSTNAME_VALIDATION'] = \
+        get_boolean_val_from_env('REDIS_WEBCLI_SKIP_HOSTNAME_VALIDATION',
+                                 False)
+
 
 def get_boolean_val_from_env(env_entry_name, default_value):
     val = os.getenv(env_entry_name)
-    if not val or val.lower() != "true":
+    if val is None:
         return default_value
-    return True
+
+    if val.lower() == "true":
+        return True
+
+    if val.lower() == "false":
+        return False
+
+    app.logger.warn("ignoring value for: %s, should be either true/false", env_entry_name)
+    return default_value
 
 configure()
 redis_sentinel.init_app(app)
@@ -160,15 +170,18 @@ def get_conn_through_sentinel():
     master_ip = str(master_info[0])
     master_port = str(master_info[1])
 
-    conn = None
+    connection_args = {
+        "host": master_ip,
+        "port": master_port,
+        "password": app.config['REDIS_PASSWORD']
+    }
+
     if app.config['SSL_ENABLED']:
-        ssl_cert_reqs = None if app.config['INSECURE_SSL'] else 'required'
-        conn = redis.Redis(host=master_ip, ssl=True,
-                           ssl_cert_reqs=ssl_cert_reqs,
-                           port=master_port,
-                           password=app.config['REDIS_PASSWORD'])
-    else:
-        conn = redis.Redis(host=master_ip, port=master_port, password=app.config['REDIS_PASSWORD'])
+        ssl_cert_reqs = None if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
+        connection_args['ssl'] = True
+        connection_args['ssl_cert_reqs'] = ssl_cert_reqs
+
+    conn = redis.Redis(**connection_args)
 
     return conn
 
