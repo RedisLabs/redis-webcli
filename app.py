@@ -18,6 +18,10 @@ from flask_redis_sentinel import SentinelExtension
 from flask_bootstrap import Bootstrap
 import redis_sentinel_url
 import redis
+from redis.sentinel import Sentinel
+from redis.connection import SSLConnection
+from redis import StrictRedis
+
 
 redis_sentinel = SentinelExtension()
 sentinel = redis_sentinel.sentinel
@@ -149,23 +153,35 @@ def execute():
     req = request.get_json()
     try:
         conn = get_conn_through_sentinel()
-        response = str(conn.execute_command(*req['command'].split()))
+        response = conn.execute_command(*req['command'].split())
         success = True
     except redis.exceptions.ConnectionError:
         try:
             conn = get_conn_through_sentinel()
-            response = str(conn.execute_command(*req['command'].split()))
+            response = conn.execute_command(*req['command'].split())
             success = True
         except Exception as err:
             response = 'Exception: %s' % str(err)
+            app.logger.exception("execute err")
     except Exception as err:
         response = 'Exception: %s' % str(err)
+        app.logger.exception("execute err")
+
+    if isinstance(response, bytes):
+        response = response.decode("utf-8")
+
     return jsonify({
         'response': response,
         'success': success
     })
 
+
 def get_conn_through_sentinel():
+    # it would be nice to call sentinel.master_for
+    # redis-py API here. But this does not work
+    # when the bdb is configured with TLS
+    # creating the connection directly instead
+
     master_info = get_master(app.config['REDIS_URL'])
     master_ip = str(master_info[0])
     master_port = str(master_info[1])
@@ -181,9 +197,8 @@ def get_conn_through_sentinel():
         connection_args['ssl'] = True
         connection_args['ssl_cert_reqs'] = ssl_cert_reqs
 
-    conn = redis.Redis(**connection_args)
+    return redis.Redis(**connection_args)
 
-    return conn
 
 def get_master(url):
     if not url.startswith('redis+sentinel://'):
