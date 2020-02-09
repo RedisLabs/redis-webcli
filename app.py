@@ -18,9 +18,6 @@ from flask_redis_sentinel import SentinelExtension
 from flask_bootstrap import Bootstrap
 import redis_sentinel_url
 import redis
-from redis.sentinel import Sentinel
-from redis.connection import SSLConnection
-from redis import StrictRedis
 
 
 redis_sentinel = SentinelExtension()
