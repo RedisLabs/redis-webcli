@@ -19,8 +19,8 @@ from flask_bootstrap import Bootstrap
 import redis_sentinel_url
 import redis
 
+
 redis_sentinel = SentinelExtension()
-redis_db = redis_sentinel.default_connection
 sentinel = redis_sentinel.sentinel
 
 app = Flask(__name__)
@@ -72,6 +72,26 @@ def configure():
         redis_dbname)
     app.config['REDIS_PASSWORD'] = redis_password
 
+    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED',
+                                                         False)
+    app.config['SKIP_HOSTNAME_VALIDATION'] = \
+        get_boolean_val_from_env('REDIS_WEBCLI_SKIP_HOSTNAME_VALIDATION',
+                                 False)
+
+
+def get_boolean_val_from_env(env_entry_name, default_value):
+    val = os.getenv(env_entry_name)
+    if val is None:
+        return default_value
+
+    if val.lower() == "true":
+        return True
+
+    if val.lower() == "false":
+        return False
+
+    app.logger.warn("ignoring value for: %s, should be either true/false", env_entry_name)
+    return default_value
 
 configure()
 redis_sentinel.init_app(app)
@@ -129,20 +149,52 @@ def execute():
     success = False
     req = request.get_json()
     try:
-        response = redis_db.execute_command(*req['command'].split())
+        conn = get_conn_through_sentinel()
+        response = conn.execute_command(*req['command'].split())
         success = True
     except redis.exceptions.ConnectionError:
         try:
-            response = redis_db.execute_command(*req['command'].split())
+            conn = get_conn_through_sentinel()
+            response = conn.execute_command(*req['command'].split())
             success = True
         except Exception as err:
             response = 'Exception: %s' % str(err)
+            app.logger.exception("execute err")
     except Exception as err:
         response = 'Exception: %s' % str(err)
+        app.logger.exception("execute err")
+
+    if isinstance(response, bytes):
+        response = response.decode("utf-8")
+
     return jsonify({
         'response': response,
         'success': success
     })
+
+
+def get_conn_through_sentinel():
+    # it would be nice to call sentinel.master_for
+    # redis-py API here. But this does not work
+    # when the bdb is configured with TLS
+    # creating the connection directly instead
+
+    master_info = get_master(app.config['REDIS_URL'])
+    master_ip = str(master_info[0])
+    master_port = str(master_info[1])
+
+    connection_args = {
+        "host": master_ip,
+        "port": master_port,
+        "password": app.config['REDIS_PASSWORD']
+    }
+
+    if app.config['SSL_ENABLED']:
+        ssl_cert_reqs = None if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
+        connection_args['ssl'] = True
+        connection_args['ssl_cert_reqs'] = ssl_cert_reqs
+
+    return redis.Redis(**connection_args)
 
 
 def get_master(url):
