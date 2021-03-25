@@ -87,7 +87,7 @@ def execute():
             response = conn.execute_command(*req['command'].split())
             success = True
         except Exception as err:
-            response = 'Exception: %s' % str(err)
+            response = 'Exception: cannot connect. %s' % str(err)
             app.logger.exception("execute err")
     except Exception as err:
         response = 'Exception: %s' % str(err)
