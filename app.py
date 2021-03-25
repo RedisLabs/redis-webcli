@@ -12,7 +12,7 @@ from flask import Flask, render_template, request, jsonify, abort
 from flask import current_app as capp
 from flask_redis_sentinel import SentinelExtension
 from flask_bootstrap import Bootstrap
-from config import configure, should_read_from_file_system, get_password_from_file_system
+from config import configure, should_read_from_file_system, get_username_and_password_from_file_system
 import redis_sentinel_url
 import redis
 
@@ -82,7 +82,7 @@ def execute():
         success = True
     except redis.exceptions.ConnectionError:
         try:
-            reload_password_from_file_system_if_needed()
+            reload_username_password_from_file_system_if_needed()
             conn = get_conn_through_sentinel()
             response = conn.execute_command(*req['command'].split())
             success = True
@@ -102,14 +102,15 @@ def execute():
     })
 
 
-def reload_password_from_file_system_if_needed(app):
+def reload_username_password_from_file_system_if_needed(app):
     # It may be that the dynamic password was changed since the config was set
     if should_read_from_file_system():
-        redis_password = get_password_from_file_system(app)
+        redis_username, redis_password = get_username_and_password_from_file_system(app)
         if not redis_password:
-            raise Exception
+            raise Exception("Missing password from file system.")
         else:
             app.config["REDIS_PASSWORD"] = redis_password
+            app.config["REDIS_USERNAME"] = redis_username
 
 
 def get_conn_through_sentinel():
@@ -127,6 +128,10 @@ def get_conn_through_sentinel():
         "port": master_port,
         "password": app.config['REDIS_PASSWORD']
     }
+    redis_username = app.config['REDIS_USERNAME']
+    if redis_username:
+        # if no user name is sent, Redis will use the default username.
+        connection_args['username'] = redis_username
 
     if app.config['SSL_ENABLED']:
         ssl_cert_reqs = None if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'

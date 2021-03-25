@@ -17,9 +17,11 @@ def configure(app):
     redis_dbname = None
     sentinel_addr = None
     sentinel_port = None
+    redis_username = None
     if should_read_from_file_system():
-        redis_password = get_password_from_file_system()
+        redis_username, redis_password = get_username_and_password_from_file_system()
         if not redis_password:
+            logger.error("Couldn't read redis password from file system.")
             return
 
     # Handle Cloud Foundry with Sentinel
@@ -55,7 +57,7 @@ def configure(app):
         sentinel_host,
         redis_dbname)
     app.config['REDIS_PASSWORD'] = redis_password
-
+    app.config['REDIS_USERNAME'] = redis_username
     app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED',
                                                          False)
     app.config['SKIP_HOSTNAME_VALIDATION'] = \
@@ -65,9 +67,10 @@ def configure(app):
 def should_read_from_file_system():
     return get_boolean_val_from_env('READ_FROM_FILE_SYSTEM', False)
 
-def get_password_from_file_system():
+def get_username_and_password_from_file_system():
     file_system_location = os.getenv('FILE_SYSTEM_LOCATION')
     redis_password = None
+    redis_username = None
     if not file_system_location:
         logger.error("Missing FILE_SYSTEM_LOCATION from env variable.")
     else:
@@ -75,10 +78,12 @@ def get_password_from_file_system():
             with open(file_system_location) as json_file:
                 credentials = json.load(json_file)
                 redis_password = credentials['password']
+                redis_username = credentials['username']
+
         except (FileNotFoundError, ValueError, KeyError):
             logger.error(f"Couldn't parse vault file {file_system_location}")
 
-    return redis_password
+    return redis_username, redis_password
 
 def get_boolean_val_from_env(env_entry_name, default_value):
     val = os.getenv(env_entry_name)
