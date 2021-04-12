@@ -1,5 +1,3 @@
-import os
-import json
 import threading
 import time
 import subprocess
@@ -10,90 +8,20 @@ try:
 except ImportError:
     # Python 3.x
     from urllib.parse import urlparse, quote
-from collections import OrderedDict
 from flask import Flask, render_template, request, jsonify, abort
 from flask import current_app as capp
-from flask_redis import FlaskRedis
 from flask_redis_sentinel import SentinelExtension
 from flask_bootstrap import Bootstrap
+from config import configure, should_read_from_file_system, get_username_and_password_from_file_system
 import redis_sentinel_url
 import redis
-
 
 redis_sentinel = SentinelExtension()
 sentinel = redis_sentinel.sentinel
 
 app = Flask(__name__)
 
-# Let Redis decode responses from bytes to strings
-app.config['REDIS_DECODE_RESPONSES'] = True
-
-def _get_service(services):
-    for service_name, instances in services.items():
-        for instance in instances:
-            if 'redis' in instance.get('tags', []):
-                return instance
-
-def configure():
-    redis_password = None
-    redis_dbname = None
-    sentinel_addr = None
-    sentinel_port = None
-    # Handle Cloud Foundry with Sentinel
-    if 'VCAP_SERVICES' in os.environ:
-        services = json.loads(os.getenv('VCAP_SERVICES'))
-        service = _get_service(services)
-        creds = service['credentials']
-        redis_password = creds['password']
-        redis_dbname = quote(creds['name'], safe='')
-
-        if 'sentinel_addrs' in creds:
-            sentinel_addr = creds['sentinel_addrs']
-            sentinel_port = creds['sentinel_port']
-        else:
-            sentinel_addr = os.getenv('REDIS_SENTINEL_HOST').split(",")  # example: 1.1.1.1,2.2.2.2
-            sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
-
-    elif 'REDIS_SENTINEL_HOST' in os.environ:
-        redis_password = os.getenv('REDIS_PASSWORD')
-        redis_dbname = os.getenv('REDIS_DBNAME')
-        sentinel_addr = os.getenv('REDIS_SENTINEL_HOST').split(",")
-        sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
-    else:
-        app.logger.warn("Couldn't configure redis")
-        return
-
-    if not os.getenv('NO_URL_QUOTING'):
-        redis_password = quote(redis_password, safe='')
-    sentinel_host = ",".join("%s:%s" % (addr, sentinel_port) for addr in sentinel_addr)
-    app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s/%s/0' % (
-        redis_password,
-        sentinel_host,
-        redis_dbname)
-    app.config['REDIS_PASSWORD'] = redis_password
-
-    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED',
-                                                         False)
-    app.config['SKIP_HOSTNAME_VALIDATION'] = \
-        get_boolean_val_from_env('REDIS_WEBCLI_SKIP_HOSTNAME_VALIDATION',
-                                 False)
-
-
-def get_boolean_val_from_env(env_entry_name, default_value):
-    val = os.getenv(env_entry_name)
-    if val is None:
-        return default_value
-
-    if val.lower() == "true":
-        return True
-
-    if val.lower() == "false":
-        return False
-
-    app.logger.warn("ignoring value for: %s, should be either true/false", env_entry_name)
-    return default_value
-
-configure()
+configure(app)
 redis_sentinel.init_app(app)
 Bootstrap(app)
 
@@ -154,11 +82,12 @@ def execute():
         success = True
     except redis.exceptions.ConnectionError:
         try:
+            reload_username_password_from_file_system_if_needed()
             conn = get_conn_through_sentinel()
             response = conn.execute_command(*req['command'].split())
             success = True
         except Exception as err:
-            response = 'Exception: %s' % str(err)
+            response = 'Exception: cannot connect. %s' % str(err)
             app.logger.exception("execute err")
     except Exception as err:
         response = 'Exception: %s' % str(err)
@@ -171,6 +100,17 @@ def execute():
         'response': response,
         'success': success
     })
+
+
+def reload_username_password_from_file_system_if_needed(app):
+    # It may be that the dynamic password was changed since the config was set
+    if should_read_from_file_system():
+        redis_username, redis_password = get_username_and_password_from_file_system(app)
+        if not redis_password:
+            raise Exception("Missing password from file system.")
+        else:
+            app.config["REDIS_PASSWORD"] = redis_password
+            app.config["REDIS_USERNAME"] = redis_username
 
 
 def get_conn_through_sentinel():
@@ -188,6 +128,10 @@ def get_conn_through_sentinel():
         "port": master_port,
         "password": app.config['REDIS_PASSWORD']
     }
+    redis_username = app.config['REDIS_USERNAME']
+    if redis_username:
+        # if no user name is sent, Redis will use the default username.
+        connection_args['username'] = redis_username
 
     if app.config['SSL_ENABLED']:
         ssl_cert_reqs = None if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
