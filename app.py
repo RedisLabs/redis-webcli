@@ -80,9 +80,9 @@ def execute():
         conn = get_conn_through_sentinel()
         response = conn.execute_command(*req['command'].split())
         success = True
-    except redis.exceptions.ConnectionError:
+    except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         try:
-            reload_username_password_from_file_system_if_needed()
+            reload_username_password_from_file_system_if_needed(app)
             conn = get_conn_through_sentinel()
             response = conn.execute_command(*req['command'].split())
             success = True
@@ -105,7 +105,7 @@ def execute():
 def reload_username_password_from_file_system_if_needed(app):
     # It may be that the dynamic password was changed since the config was set
     if should_read_from_file_system():
-        redis_username, redis_password = get_username_and_password_from_file_system(app)
+        redis_username, redis_password = get_username_and_password_from_file_system()
         if not redis_password:
             raise Exception("Missing password from file system.")
         else:
