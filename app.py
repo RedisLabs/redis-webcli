@@ -75,6 +75,7 @@ class MemtierThread(threading.Thread):
 @app.route('/execute', methods=['POST'])
 def execute():
     success = False
+    credentials_changed = False
     req = request.get_json()
     try:
         conn = get_conn_through_sentinel()
@@ -86,6 +87,7 @@ def execute():
             conn = get_conn_through_sentinel()
             response = conn.execute_command(*req['command'].split())
             success = True
+            credentials_changed = True
         except Exception as err:
             response = 'Exception: cannot connect. %s' % str(err)
             app.logger.exception("execute err")
@@ -98,7 +100,8 @@ def execute():
 
     return jsonify({
         'response': response,
-        'success': success
+        'success': success,
+        'credentials_changed': credentials_changed
     })
 
 
