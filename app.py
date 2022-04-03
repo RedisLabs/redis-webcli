@@ -16,6 +16,8 @@ from config import configure, should_read_from_file_system, get_username_and_pas
 import redis_sentinel_url
 import redis
 
+import sys
+
 redis_sentinel = SentinelExtension()
 sentinel = redis_sentinel.sentinel
 
@@ -87,10 +89,10 @@ def execute():
             response = conn.execute_command(*req['command'].split())
             success = True
         except Exception as err:
-            response = 'Exception: cannot connect. %s' % str(err)
+            response = 'Exception: cannot connect. %s (%s)' % (str(err), sys.version)
             app.logger.exception("execute err")
     except Exception as err:
-        response = 'Exception: %s' % str(err)
+        response = 'Exception: %s (%s)' % (str(err), sys.version)
         app.logger.exception("execute err")
 
     if isinstance(response, bytes):
