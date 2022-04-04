@@ -5,7 +5,7 @@ applications:
   disk_quota: 256MB
   random-route: true
   buildpack: python_buildpack
-  command: python -m flask run -p $PORT -h 0.0.0.0
+  command: python3.9 -m flask run -p $PORT -h 0.0.0.0
   env:
     FLASK_APP: app.py
     APP_SETTINGS: settings.cfg
