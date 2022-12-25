@@ -81,7 +81,7 @@ def get_username_and_password_from_file_system():
                 redis_username = credentials['username']
 
         except (FileNotFoundError, ValueError, KeyError):
-            logger.error(f"Couldn't parse vault file {file_system_location}")
+            logger.error("Couldn't parse vault file %s", file_system_location)
 
     return redis_username, redis_password
 

@@ -24,6 +24,7 @@ app = Flask(__name__)
 configure(app)
 redis_sentinel.init_app(app)
 Bootstrap(app)
+# print("done")
 
 
 class MemtierThread(threading.Thread):
