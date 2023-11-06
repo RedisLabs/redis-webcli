@@ -1,3 +1,4 @@
+import inspect
 import threading
 import time
 import subprocess
@@ -11,11 +12,24 @@ except ImportError:
 from flask import Flask, render_template, request, jsonify, abort
 from flask import current_app as capp
 from flask_redis_sentinel import SentinelExtension
+import flask_redis_sentinel
 from flask_bootstrap import Bootstrap
 from config import configure, should_read_from_file_system, get_username_and_password_from_file_system
 import redis_sentinel_url
 import redis
 
+
+class MyOverride(object):
+    @classmethod
+    def _my_config_from_variables(cls, config, the_class):
+        args = inspect.getfullargspec(the_class.__init__).args
+        args.remove('self')
+        args.remove('host')
+        args.remove('port')
+        args.remove('db')
+        return {arg: config[arg.upper()] for arg in args if arg.upper() in config}
+
+flask_redis_sentinel.RedisSentinel._config_from_variables = MyOverride._my_config_from_variables
 redis_sentinel = SentinelExtension()
 sentinel = redis_sentinel.sentinel
 
