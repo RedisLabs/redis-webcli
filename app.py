@@ -33,6 +33,7 @@ flask_redis_sentinel.RedisSentinel._config_from_variables = MyOverride._my_confi
 redis_sentinel = SentinelExtension()
 sentinel = redis_sentinel.sentinel
 
+
 app = Flask(__name__)
 
 configure(app)
@@ -108,9 +109,6 @@ def execute():
         response = 'Exception: %s' % str(err)
         app.logger.exception("execute err")
 
-    if isinstance(response, bytes):
-        response = response.decode("utf-8")
-
     return jsonify({
         'response': response,
         'success': success
@@ -141,7 +139,8 @@ def get_conn_through_sentinel():
     connection_args = {
         "host": master_ip,
         "port": master_port,
-        "password": app.config['REDIS_PASSWORD']
+        "password": app.config['REDIS_PASSWORD'],
+        "decode_responses" : True
     }
     redis_username = app.config['REDIS_USERNAME']
     if redis_username:
@@ -149,7 +148,7 @@ def get_conn_through_sentinel():
         connection_args['username'] = redis_username
 
     if app.config['SSL_ENABLED']:
-        ssl_cert_reqs = None if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
+        ssl_cert_reqs = "none" if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
         connection_args['ssl'] = True
         connection_args['ssl_cert_reqs'] = ssl_cert_reqs
 
