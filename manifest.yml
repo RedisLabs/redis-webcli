@@ -5,7 +5,7 @@ applications:
   disk_quota: 256MB
   random-route: true
   buildpacks:
-    - https://github.com/cloudfoundry/python-buildpack.git#v1.7.45
+    - https://github.com/cloudfoundry/python-buildpack.git#v1.8.15
   command: python -m flask run -p $PORT -h 0.0.0.0
   env:
     FLASK_APP: app.py
