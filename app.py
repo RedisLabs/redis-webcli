@@ -1,3 +1,4 @@
+import inspect
 import threading
 import time
 import subprocess
@@ -11,13 +12,27 @@ except ImportError:
 from flask import Flask, render_template, request, jsonify, abort
 from flask import current_app as capp
 from flask_redis_sentinel import SentinelExtension
+import flask_redis_sentinel
 from flask_bootstrap import Bootstrap
 from config import configure, should_read_from_file_system, get_username_and_password_from_file_system
 import redis_sentinel_url
 import redis
 
+
+class MyOverride(object):
+    @classmethod
+    def _my_config_from_variables(cls, config, the_class):
+        args = inspect.getfullargspec(the_class.__init__).args
+        args.remove('self')
+        args.remove('host')
+        args.remove('port')
+        args.remove('db')
+        return {arg: config[arg.upper()] for arg in args if arg.upper() in config}
+
+flask_redis_sentinel.RedisSentinel._config_from_variables = MyOverride._my_config_from_variables
 redis_sentinel = SentinelExtension()
 sentinel = redis_sentinel.sentinel
+
 
 app = Flask(__name__)
 
@@ -94,9 +109,6 @@ def execute():
         response = 'Exception: %s' % str(err)
         app.logger.exception("execute err")
 
-    if isinstance(response, bytes):
-        response = response.decode("utf-8")
-
     return jsonify({
         'response': response,
         'success': success
@@ -127,7 +139,8 @@ def get_conn_through_sentinel():
     connection_args = {
         "host": master_ip,
         "port": master_port,
-        "password": app.config['REDIS_PASSWORD']
+        "password": app.config['REDIS_PASSWORD'],
+        "decode_responses" : True
     }
     redis_username = app.config['REDIS_USERNAME']
     if redis_username:
@@ -135,7 +148,7 @@ def get_conn_through_sentinel():
         connection_args['username'] = redis_username
 
     if app.config['SSL_ENABLED']:
-        ssl_cert_reqs = None if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
+        ssl_cert_reqs = "none" if app.config['SKIP_HOSTNAME_VALIDATION'] else 'required'
         connection_args['ssl'] = True
         connection_args['ssl_cert_reqs'] = ssl_cert_reqs
 
