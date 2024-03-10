@@ -52,17 +52,13 @@ def configure(app):
     if not os.getenv('NO_URL_QUOTING'):
         redis_password = quote(redis_password, safe='')
     sentinel_host = ",".join("%s:%s" % (addr, sentinel_port) for addr in sentinel_addr)
-    app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s/%s/0' % (
-        redis_password,
-        sentinel_host,
-        redis_dbname)
+    app.config['REDIS_URL'] = 'redis+sentinel://:%s@%s/%s/0' % (redis_password, sentinel_host, redis_dbname)
     app.config['REDIS_PASSWORD'] = redis_password
     app.config['REDIS_USERNAME'] = redis_username
-    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED',
-                                                         False)
-    app.config['SKIP_HOSTNAME_VALIDATION'] = \
-        get_boolean_val_from_env('REDIS_WEBCLI_SKIP_HOSTNAME_VALIDATION',
-                                 False)
+    app.config['SSL_ENABLED'] = get_boolean_val_from_env('REDIS_WEBCLI_SSL_ENABLED', False)
+    app.config['SKIP_HOSTNAME_VALIDATION'] = get_boolean_val_from_env('REDIS_WEBCLI_SKIP_HOSTNAME_VALIDATION', False)
+    app.config['USE_SENTINEL'] = get_boolean_val_from_env('USE_SENTINEL', True)
+
 
 def should_read_from_file_system():
     return get_boolean_val_from_env('READ_FROM_FILE_SYSTEM', False)
