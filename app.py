@@ -159,10 +159,9 @@ def get_connection():
 
 
 def _get_direct_connection():
-    service_url = urlparse(app.config['REDIS_URL'])
     connection_args = {
-        "host": service_url.hostname,
-        "port": service_url.port or 8080,
+        "host": app.config["DB_SERVICE_HOST"],
+        "port": app.config["DB_SERVICE_PORT"],
         "password": app.config['REDIS_PASSWORD'],
         "decode_responses": True
     }
