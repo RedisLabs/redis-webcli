@@ -93,13 +93,13 @@ def execute():
     success = False
     req = request.get_json()
     try:
-        conn = get_conn_through_sentinel()
+        conn = get_connection()
         response = conn.execute_command(*req['command'].split())
         success = True
     except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         try:
             reload_username_password_from_file_system_if_needed(app)
-            conn = get_conn_through_sentinel()
+            conn = get_connection()
             response = conn.execute_command(*req['command'].split())
             success = True
         except Exception as err:
@@ -126,21 +126,33 @@ def reload_username_password_from_file_system_if_needed(app):
             app.config["REDIS_USERNAME"] = redis_username
 
 
-def get_conn_through_sentinel():
-    # it would be nice to call sentinel.master_for
-    # redis-py API here. But this does not work
-    # when the bdb is configured with TLS
-    # creating the connection directly instead
+def get_connection():
+    if app.config['USE_SENTINEL']:
+        return _get_sentinel_connection()
+    else:
+        return _get_direct_connection()
+
+
+def _get_direct_connection():
+    connection_args = {
+        "host": app.config["DB_SERVICE_HOST"],
+        "port": app.config["DB_SERVICE_PORT"],
+        "password": app.config['REDIS_PASSWORD'],
+        "decode_responses": True
+    }
+    return redis.Redis(**connection_args)
+
+
+def _get_sentinel_connection():
+    # it would be nice to call sentinel.master_for redis-py API here. But this does not work when the bdb is configured
+    # with TLS creating the connection directly instead
 
     master_info = get_master(app.config['REDIS_URL'])
-    master_ip = str(master_info[0])
-    master_port = str(master_info[1])
-
     connection_args = {
-        "host": master_ip,
-        "port": master_port,
+        "host": str(master_info[0]),
+        "port": str(master_info[1]),
         "password": app.config['REDIS_PASSWORD'],
-        "decode_responses" : True
+        "decode_responses": True
     }
     redis_username = app.config['REDIS_USERNAME']
     if redis_username:
@@ -169,6 +181,7 @@ def update_memtier_message():
             return
         if output:
             capp.memtier_message = capp.memtier_message + "\n" + output.strip()
+
 
 def is_memtier_running(check_alive=True):
     if not hasattr(capp, 'memtier_process') or not capp.memtier_process:
@@ -234,7 +247,6 @@ def stop_memtier_benchmark():
     })
 
 
-
 @app.route('/masters', methods=['GET'])
 def masters():
     success = False
@@ -249,7 +261,7 @@ def masters():
     })
 
 
-def get_conn_info(url):
+def get_connection_info(url):
     conn_info = []
     if url.startswith('redis://'):
         urlparts = urlparse(url)
@@ -262,8 +274,7 @@ def get_conn_info(url):
         result = redis_sentinel_url.parse_sentinel_url(url)
         print(result.hosts)
         conn_info = [
-            ('Sentinel Hosts', ','.join(['%s:%s' % (pair[0], pair[1])
-                                         for pair in result.hosts])),
+            ('Sentinel Hosts', ','.join(['%s:%s' % (pair[0], pair[1]) for pair in result.hosts])),
             ('Service', result.default_client.service)
         ]
 
@@ -272,5 +283,4 @@ def get_conn_info(url):
 
 @app.route('/')
 def index():
-    return render_template('index.html', config=app.config,
-                           conninfo=get_conn_info(app.config['REDIS_URL']))
+    return render_template('index.html', config=app.config, conninfo=get_connection_info(app.config['REDIS_URL']))
