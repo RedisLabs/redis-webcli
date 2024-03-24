@@ -1,4 +1,4 @@
-FROM python:3.6.7
+FROM python:3.7
 
 ENV FLASK_APP app.py
 ENV APP_SETTINGS settings.cfg
