@@ -88,19 +88,17 @@ class MemtierThread(threading.Thread):
         return self._return_code
 
 
-@app.route('/execute', methods=['POST'])
-def execute():
+def _execute(request_as_string: str):
     success = False
-    req = request.get_json()
     try:
         conn = get_conn_through_sentinel()
-        response = conn.execute_command(*req['command'].split())
+        response = conn.execute_command(*request_as_string.split())
         success = True
     except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         try:
             reload_username_password_from_file_system_if_needed(app)
             conn = get_conn_through_sentinel()
-            response = conn.execute_command(*req['command'].split())
+            response = conn.execute_command(*request_as_string.split())
             success = True
         except Exception as err:
             response = 'Exception: cannot connect. %s' % str(err)
@@ -108,10 +106,37 @@ def execute():
     except Exception as err:
         response = 'Exception: %s' % str(err)
         app.logger.exception("execute err")
+    return response, success
+
+
+@app.route('/execute', methods=['POST'])
+def execute():
+    req = request.get_json()
+    response, success = _execute(req['command'])
 
     return jsonify({
         'response': response,
         'success': success
+    })
+
+
+@app.route('/batch_execute', methods=['POST'])
+def batch_execute():
+    all_succeeded = True
+    responses = dict()
+    req = request.get_json()
+    commands = req['commands']
+    for command in commands:
+        response, success = _execute(command)
+        responses[command] = {
+            'response': response,
+            'success': success,
+        }
+        if not success:
+            all_succeeded = False
+    return jsonify({
+        'response': responses,
+        'success': all_succeeded
     })
 
 
