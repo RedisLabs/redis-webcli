@@ -88,17 +88,17 @@ class MemtierThread(threading.Thread):
         return self._return_code
 
 
-def _execute(request_as_string: str):
+def _execute(command: str):
     success = False
     try:
         conn = get_conn_through_sentinel()
-        response = conn.execute_command(*request_as_string.split())
+        response = conn.execute_command(*command.split())
         success = True
     except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         try:
             reload_username_password_from_file_system_if_needed(app)
             conn = get_conn_through_sentinel()
-            response = conn.execute_command(*request_as_string.split())
+            response = conn.execute_command(*command.split())
             success = True
         except Exception as err:
             response = 'Exception: cannot connect. %s' % str(err)
