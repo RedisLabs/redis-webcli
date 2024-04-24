@@ -155,10 +155,10 @@ def get_connection():
     if app.config['USE_SENTINEL']:
         return _get_sentinel_connection()
     else:
-        return _get_direct_connection()
+        return _get_service_connection()
 
 
-def _get_direct_connection():
+def _get_service_connection():
     connection_args = {
         "host": app.config["DB_SERVICE_HOST"],
         "port": app.config["DB_SERVICE_PORT"],
@@ -308,4 +308,5 @@ def get_connection_info(url):
 
 @app.route('/')
 def index():
-    return render_template('index.html', config=app.config, conninfo=get_connection_info(app.config['REDIS_URL']))
+    return render_template('index.html', config=app.config,
+                           conninfo=get_connection_info(app.config['REDIS_URL']))
