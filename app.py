@@ -123,15 +123,15 @@ def execute():
 @app.route('/batch_execute', methods=['POST'])
 def batch_execute():
     all_succeeded = True
-    responses = dict()
+    responses = []
     req = request.get_json()
     commands = req['commands']
     for command in commands:
         response, success = _execute(command)
-        responses[command] = {
+        responses.append({
             'response': response,
             'success': success,
-        }
+        })
         if not success:
             all_succeeded = False
     return jsonify({
