@@ -91,13 +91,13 @@ class MemtierThread(threading.Thread):
 def _execute(command: str):
     success = False
     try:
-        conn = get_connection()
+        conn = get_conn()
         response = conn.execute_command(*command.split())
         success = True
     except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         try:
             reload_username_password_from_file_system_if_needed(app)
-            conn = get_connection()
+            conn = get_conn()
             response = conn.execute_command(*command.split())
             success = True
         except Exception as err:
@@ -151,7 +151,7 @@ def reload_username_password_from_file_system_if_needed(app):
             app.config["REDIS_USERNAME"] = redis_username
 
 
-def get_connection():
+def get_conn():
     if app.config['USE_SENTINEL']:
         return _get_sentinel_conn()
     else:
