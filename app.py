@@ -91,13 +91,13 @@ class MemtierThread(threading.Thread):
 def _execute(command: str):
     success = False
     try:
-        conn = get_conn_through_sentinel()
+        conn = get_conn()
         response = conn.execute_command(*command.split())
         success = True
     except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         try:
             reload_username_password_from_file_system_if_needed(app)
-            conn = get_conn_through_sentinel()
+            conn = get_conn()
             response = conn.execute_command(*command.split())
             success = True
         except Exception as err:
@@ -151,21 +151,30 @@ def reload_username_password_from_file_system_if_needed(app):
             app.config["REDIS_USERNAME"] = redis_username
 
 
-def get_conn_through_sentinel():
-    # it would be nice to call sentinel.master_for
-    # redis-py API here. But this does not work
-    # when the bdb is configured with TLS
-    # creating the connection directly instead
+def get_conn():
+    if app.config['USE_SENTINEL']:
+        return _get_sentinel_conn()
+    else:
+        return _get_service_conn()
+
+
+def _get_service_conn():
+    return redis.Redis(host=app.config["DB_SERVICE_HOST"],
+                       port=app.config["DB_SERVICE_PORT"],
+                       password=app.config['REDIS_PASSWORD'],
+                       decode_responses=True)
+
+
+def _get_sentinel_conn():
+    # it would be nice to call sentinel.master_for redis-py API here. But this does not work when the bdb is configured
+    # with TLS creating the connection directly instead
 
     master_info = get_master(app.config['REDIS_URL'])
-    master_ip = str(master_info[0])
-    master_port = str(master_info[1])
-
     connection_args = {
-        "host": master_ip,
-        "port": master_port,
+        "host": str(master_info[0]),
+        "port": str(master_info[1]),
         "password": app.config['REDIS_PASSWORD'],
-        "decode_responses" : True
+        "decode_responses": True
     }
     redis_username = app.config['REDIS_USERNAME']
     if redis_username:

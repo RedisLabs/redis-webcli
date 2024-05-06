@@ -63,6 +63,10 @@ def configure(app):
     app.config['SKIP_HOSTNAME_VALIDATION'] = \
         get_boolean_val_from_env('REDIS_WEBCLI_SKIP_HOSTNAME_VALIDATION',
                                  False)
+    app.config['USE_SENTINEL'] = get_boolean_val_from_env('USE_SENTINEL', True)
+    app.config['DB_SERVICE_HOST'] = os.getenv('DB_SERVICE_HOST')
+    app.config['DB_SERVICE_PORT'] = os.getenv('DB_SERVICE_PORT')
+
 
 def should_read_from_file_system():
     return get_boolean_val_from_env('READ_FROM_FILE_SYSTEM', False)
