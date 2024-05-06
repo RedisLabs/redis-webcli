@@ -153,22 +153,19 @@ def reload_username_password_from_file_system_if_needed(app):
 
 def get_connection():
     if app.config['USE_SENTINEL']:
-        return _get_sentinel_connection()
+        return _get_sentinel_conn()
     else:
-        return _get_service_connection()
+        return _get_service_conn()
 
 
-def _get_service_connection():
-    connection_args = {
-        "host": app.config["DB_SERVICE_HOST"],
-        "port": app.config["DB_SERVICE_PORT"],
-        "password": app.config['REDIS_PASSWORD'],
-        "decode_responses": True
-    }
-    return redis.Redis(**connection_args)
+def _get_service_conn():
+    return redis.Redis(host=app.config["DB_SERVICE_HOST"],
+                       port=app.config["DB_SERVICE_PORT"],
+                       password=app.config['REDIS_PASSWORD'],
+                       decode_responses=True)
 
 
-def _get_sentinel_connection():
+def _get_sentinel_conn():
     # it would be nice to call sentinel.master_for redis-py API here. But this does not work when the bdb is configured
     # with TLS creating the connection directly instead
 
@@ -286,7 +283,7 @@ def masters():
     })
 
 
-def get_connection_info(url):
+def get_conn_info(url):
     conn_info = []
     if url.startswith('redis://'):
         urlparts = urlparse(url)
@@ -299,7 +296,8 @@ def get_connection_info(url):
         result = redis_sentinel_url.parse_sentinel_url(url)
         print(result.hosts)
         conn_info = [
-            ('Sentinel Hosts', ','.join(['%s:%s' % (pair[0], pair[1]) for pair in result.hosts])),
+            ('Sentinel Hosts', ','.join(['%s:%s' % (pair[0], pair[1])
+                                         for pair in result.hosts])),
             ('Service', result.default_client.service)
         ]
 
@@ -309,4 +307,4 @@ def get_connection_info(url):
 @app.route('/')
 def index():
     return render_template('index.html', config=app.config,
-                           conninfo=get_connection_info(app.config['REDIS_URL']))
+                           conninfo=get_conn_info(app.config['REDIS_URL']))
