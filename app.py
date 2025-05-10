@@ -2,6 +2,7 @@ import inspect
 import threading
 import time
 import subprocess
+import json
 try:
     # Python 2.x
     from urlparse import urlparse
@@ -111,7 +112,14 @@ def _execute(command: str):
 
 @app.route('/execute', methods=['POST'])
 def execute():
-    req = request.get_json()
+    if request.is_json:
+        req = request.get_json()
+    else:
+        data = request.data
+        if isinstance(data, bytes):
+            data = data.decode('utf-8')
+        req = json.loads(data)
+
     response, success = _execute(req['command'])
 
     return jsonify({
@@ -124,7 +132,14 @@ def execute():
 def batch_execute():
     all_succeeded = True
     responses = []
-    req = request.get_json()
+    if request.is_json:
+        req = request.get_json()
+    else:
+        data = request.data
+        if isinstance(data, bytes):
+            data = data.decode('utf-8')
+        req = json.loads(data)
+
     commands = req['commands']
     for command in commands:
         response, success = _execute(command)
