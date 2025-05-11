@@ -89,6 +89,15 @@ class MemtierThread(threading.Thread):
         return self._return_code
 
 
+def _get_request_json():
+    if request.is_json:
+        return request.get_json()
+    data = request.data
+    if isinstance(data, bytes):
+        data = data.decode('utf-8')
+    return json.loads(data)
+
+
 def _execute(command: str):
     success = False
     try:
@@ -112,13 +121,14 @@ def _execute(command: str):
 
 @app.route('/execute', methods=['POST'])
 def execute():
-    if request.is_json:
-        req = request.get_json()
-    else:
-        data = request.data
-        if isinstance(data, bytes):
-            data = data.decode('utf-8')
-        req = json.loads(data)
+    try:
+        req = _get_request_json()
+    except Exception as err:
+        app.logger.exception("_get_request_json err")
+        return jsonify({
+            'response': 'Exception: %s' % str(err),
+            'success': False
+        })
 
     response, success = _execute(req['command'])
 
@@ -132,13 +142,14 @@ def execute():
 def batch_execute():
     all_succeeded = True
     responses = []
-    if request.is_json:
-        req = request.get_json()
-    else:
-        data = request.data
-        if isinstance(data, bytes):
-            data = data.decode('utf-8')
-        req = json.loads(data)
+    try:
+        req = _get_request_json()
+    except Exception as err:
+        app.logger.exception("_get_request_json err")
+        return jsonify({
+            'response': 'Exception: %s' % str(err),
+            'success': False
+        })
 
     commands = req['commands']
     for command in commands:
