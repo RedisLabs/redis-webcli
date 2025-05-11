@@ -2,6 +2,7 @@ import inspect
 import threading
 import time
 import subprocess
+import json
 try:
     # Python 2.x
     from urlparse import urlparse
@@ -88,6 +89,15 @@ class MemtierThread(threading.Thread):
         return self._return_code
 
 
+def _get_request_json():
+    if request.is_json:
+        return request.get_json()
+    data = request.data
+    if isinstance(data, bytes):
+        data = data.decode('utf-8')
+    return json.loads(data)
+
+
 def _execute(command: str):
     success = False
     try:
@@ -111,7 +121,15 @@ def _execute(command: str):
 
 @app.route('/execute', methods=['POST'])
 def execute():
-    req = request.get_json()
+    try:
+        req = _get_request_json()
+    except Exception as err:
+        app.logger.exception("_get_request_json err")
+        return jsonify({
+            'response': 'Exception: %s' % str(err),
+            'success': False
+        })
+
     response, success = _execute(req['command'])
 
     return jsonify({
@@ -124,7 +142,15 @@ def execute():
 def batch_execute():
     all_succeeded = True
     responses = []
-    req = request.get_json()
+    try:
+        req = _get_request_json()
+    except Exception as err:
+        app.logger.exception("_get_request_json err")
+        return jsonify({
+            'response': 'Exception: %s' % str(err),
+            'success': False
+        })
+
     commands = req['commands']
     for command in commands:
         response, success = _execute(command)
