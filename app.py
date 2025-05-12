@@ -185,20 +185,14 @@ def get_conn():
 
 
 def _get_service_conn():
-    return redis.Redis(host=app.config["DB_SERVICE_HOST"],
-                       port=app.config["DB_SERVICE_PORT"],
-                       password=app.config['REDIS_PASSWORD'],
-                       decode_responses=True)
+    connection_args = _get_connection_args(app.config["DB_SERVICE_HOST"], app.config["DB_SERVICE_PORT"])
+    return redis.Redis(**connection_args)
 
 
-def _get_sentinel_conn():
-    # it would be nice to call sentinel.master_for redis-py API here. But this does not work when the bdb is configured
-    # with TLS creating the connection directly instead
-
-    master_info = get_master(app.config['REDIS_URL'])
+def _get_connection_args(host: str, port:str) -> dict:
     connection_args = {
-        "host": str(master_info[0]),
-        "port": str(master_info[1]),
+        "host": host,
+        "port": port,
         "password": app.config['REDIS_PASSWORD'],
         "decode_responses": True
     }
@@ -212,6 +206,14 @@ def _get_sentinel_conn():
         connection_args['ssl'] = True
         connection_args['ssl_cert_reqs'] = ssl_cert_reqs
 
+    return connection_args
+
+def _get_sentinel_conn():
+    # it would be nice to call sentinel.master_for redis-py API here. But this does not work when the bdb is configured
+    # with TLS creating the connection directly instead
+
+    master_info = get_master(app.config['REDIS_URL'])
+    connection_args = _get_connection_args(str(master_info[0]), str(master_info[1]))
     return redis.Redis(**connection_args)
 
 
