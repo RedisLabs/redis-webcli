@@ -42,6 +42,7 @@ def configure(app):
     elif 'REDIS_SENTINEL_HOST' in os.environ:
         if not should_read_from_file_system():
             redis_password = os.getenv('REDIS_PASSWORD')
+            redis_username = os.getenv('REDIS_USERNAME')
         redis_dbname = os.getenv('REDIS_DBNAME')
         sentinel_addr = os.getenv('REDIS_SENTINEL_HOST').split(",")
         sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
