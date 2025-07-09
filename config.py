@@ -13,11 +13,12 @@ logger = logging.getLogger(__name__)
 def configure(app):
     # Let Redis decode responses from bytes to strings
     app.config['REDIS_DECODE_RESPONSES'] = True
-    redis_password = None
+    redis_password = os.getenv('REDIS_PASSWORD')
+    redis_username = os.getenv('REDIS_USERNAME')
     redis_dbname = None
     sentinel_addr = None
     sentinel_port = None
-    redis_username = None
+
     if should_read_from_file_system():
         redis_username, redis_password = get_username_and_password_from_file_system()
         if not redis_password:
@@ -40,9 +41,6 @@ def configure(app):
             sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
 
     elif 'REDIS_SENTINEL_HOST' in os.environ:
-        if not should_read_from_file_system():
-            redis_password = os.getenv('REDIS_PASSWORD')
-            redis_username = os.getenv('REDIS_USERNAME')
         redis_dbname = os.getenv('REDIS_DBNAME')
         sentinel_addr = os.getenv('REDIS_SENTINEL_HOST').split(",")
         sentinel_port = os.getenv('REDIS_SENTINEL_PORT')
