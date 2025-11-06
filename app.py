@@ -23,10 +23,10 @@ class MyOverride(object):
     @classmethod
     def _my_config_from_variables(cls, config, the_class):
         args = inspect.getfullargspec(the_class.__init__).args
-        args.remove('self')
-        args.remove('host')
-        args.remove('port')
-        args.remove('db')
+        # Safely remove arguments that might not be present
+        for arg_to_remove in ['self', 'host', 'port', 'db']:
+            if arg_to_remove in args:
+                args.remove(arg_to_remove)
         return {arg: config[arg.upper()] for arg in args if arg.upper() in config}
 
 flask_redis_sentinel.RedisSentinel._config_from_variables = MyOverride._my_config_from_variables
