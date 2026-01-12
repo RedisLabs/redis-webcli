@@ -60,7 +60,7 @@ class MemtierThread(threading.Thread):
         self._process = None
 
     def run(self):
-        self._process = subprocess.Popen(["./memtier_benchmark", "-s", self._master_ip, "-p", self._master_port, "-a", self._redis_password] + self._argument_list,
+        self._process = subprocess.Popen(["memtier_benchmark", "-s", self._master_ip, "-p", self._master_port, "-a", self._redis_password] + self._argument_list,
                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, shell=False)
         while True:
             curr_output = self._process.stdout.readline().decode("utf-8")
