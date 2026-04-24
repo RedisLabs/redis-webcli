@@ -10,7 +10,7 @@ importlib_metadata==7.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.4
 MarkupSafe==2.1.5
-pip==23.0.1
+pip==26.0.1
 redis==5.0.4
 Redis-Sentinel-Url==1.0.1
 setuptools==57.5.0
